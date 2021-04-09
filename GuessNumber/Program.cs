@@ -193,22 +193,26 @@ namespace GuessNumber
                 }
             };
 
+            var noMarch = 0;
             for (int i = 0; i < question.Count; i++)
             {
-                var number = new Number(question[i]);
+                var number = new VotingNumber(question[i]);
                 var answers = number.GetAnswers();
+                if ("没找到匹配".Equals(answers)) noMarch++;
                 // Console.WriteLine("".PadLeft(20, '-'));
                 Console.WriteLine($"第{i + 1}题：{answers}");
             }
+
+            Console.WriteLine($"{question.Count-noMarch}/{question.Count}");
             
             Console.Read();
         }
 
-        class Number
+        abstract class Number
         {
-            private List<Tips> tips = new List<Tips>();
+            protected List<Tips> tips = new List<Tips>();
 
-            class Tips
+            protected class Tips
             {
                 public string Item { get; set; }
 
@@ -237,44 +241,55 @@ namespace GuessNumber
                 }
             }
 
+            protected bool IsMarch(string numbers)
+            {
+                var isMarch = true;
+                foreach (var t in tips)
+                {
+                    var numberCount = 0;
+                    for (int i = 0; i < numbers.Length; i++)
+                    {
+                        if (t.Item.Contains(numbers[i])) numberCount++;
+                    }
+
+                    isMarch &= numberCount == t.Total;
+                }
+
+                return isMarch;
+            }
+
+            public abstract string GetAnswers();
+        }
+
+        class VotingNumber : Number
+        {
             private Dictionary<int, double> votingTable = new Dictionary<int, double>();
 
-            public string GetAnswers()
+            public VotingNumber(string[] rawData) : base(rawData)
             {
-                Console.WriteLine("".PadLeft(20, '='));
+            }
+
+            private void ReVoting()
+            {
+                votingTable.Clear();
                 // Console.WriteLine(" \t0123456789");
                 for (int i = 0; i < 10; i++)
                 {
                     // Console.Write($"{i}\t");
                     votingTable.Add(i, GetVoting(i));
                 }
-
-                var tryCount = 0;
-                do
-                {
-                    if (IsMarch(GetTopNumber()))
-                    {
-                        break;
-                    }
-
-                    // Console.WriteLine($"第 {tryCount+1} 次加权");
-                    Weighted(tryCount++);
-                } while (tryCount < tips.Count);
-
-                if (!IsMarch(GetTopNumber()))
-                {
-                    return "没找到匹配";
-                }
-
-                return GetTopNumber();
             }
 
             private string GetTopNumber()
             {
-                var array = (from item in votingTable orderby item.Value descending select item.Key).Take(4).ToArray();
+                var array = (from item in votingTable
+                        orderby item.Value descending
+                        select item.Key)
+                    .Take(4)
+                    .ToArray();
                 return string.Join("", array);
             }
-            
+
             private double GetVoting(int number)
             {
                 var qCount = 0;
@@ -309,31 +324,42 @@ namespace GuessNumber
                 return 9 - qCount * 0.5 - rCount * 1;
             }
 
-            private bool IsMarch(string numbers)
-            {
-                var isMarch = true;
-                foreach (var t in tips)
-                {
-                    var numberCount = 0;
-                    for (int i = 0; i < numbers.Length; i++)
-                    {
-                        if (t.Item.Contains(numbers[i])) numberCount++;
-                    }
-
-                    isMarch &= numberCount == t.Total;
-                }
-
-                return isMarch;
-            }
-
             private void Weighted(int top)
             {
                 var target = (from t in tips orderby t.Total descending select t.Item).Skip(top).Take(1).ToArray()[0];
                 foreach (var number in target)
                 {
-                    votingTable[int.Parse(number+"")] += 1;
+                    votingTable[int.Parse(number + "")] += 1;
                 }
             }
+
+
+            public override string GetAnswers()
+            {
+                Console.WriteLine("".PadLeft(20, '='));
+                ReVoting();
+
+                var tryCount = 0;
+                do
+                {
+                    if (IsMarch(GetTopNumber()))
+                    {
+                        break;
+                    }
+
+                    // Console.WriteLine($"第 {tryCount+1} 次加权");
+                    Weighted(tryCount++);
+                } while (tryCount < tips.Count);
+
+                if (!IsMarch(GetTopNumber()))
+                {
+                    return "没找到匹配";
+                }
+
+                return GetTopNumber();
+            }
+
+
         }
     }
 }
