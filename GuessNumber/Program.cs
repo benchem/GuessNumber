@@ -196,7 +196,7 @@ namespace GuessNumber
             var noMarch = 0;
             for (int i = 0; i < question.Count; i++)
             {
-                var number = new VotingNumber(question[i]);
+                var number = new BlNumber(question[i]);
                 var answers = number.GetAnswers();
                 if ("没找到匹配".Equals(answers)) noMarch++;
                 // Console.WriteLine("".PadLeft(20, '-'));
@@ -333,7 +333,6 @@ namespace GuessNumber
                 }
             }
 
-
             public override string GetAnswers()
             {
                 Console.WriteLine("".PadLeft(20, '='));
@@ -351,15 +350,87 @@ namespace GuessNumber
                     Weighted(tryCount++);
                 } while (tryCount < tips.Count);
 
-                if (!IsMarch(GetTopNumber()))
+                var answer = GetTopNumber();
+                if (!IsMarch(answer))
                 {
                     return "没找到匹配";
                 }
-
-                return GetTopNumber();
+                return answer;
             }
 
+        }
 
+        class PsNumber : Number
+        {
+            public PsNumber(string[] rawData) : base(rawData)
+            {
+            }
+
+            private Dictionary<int, double> countTable = new Dictionary<int, double>();
+
+            public override string GetAnswers()
+            {
+                foreach (var t in tips)
+                {
+                    var p = 0.25 * t.Total;
+                    for (int i = 0; i < t.Item.Length; i++)
+                    {
+                        var str = t.Item[i].ToString();
+                        var num = int.Parse(str);
+                        if (!countTable.ContainsKey(num)) countTable.Add(num, 0);
+                        countTable[num] += p;
+                    }
+                }
+
+                var answer = GetTopNumber();
+                if (!IsMarch(answer))
+                {
+                    return "没找到匹配";
+                }
+                return answer;
+            }
+
+            private string GetTopNumber()
+            {
+                var array = (from item in countTable
+                             orderby item.Value descending
+                        select item.Key)
+                    .Take(4)
+                    .ToArray();
+                return string.Join("", array);
+            }
+        }
+
+        class BlNumber : Number
+        {
+            public BlNumber(string[] rawData) : base(rawData)
+            {
+            }
+
+            public override string GetAnswers()
+            {
+                for (int i = 0; i < 10; i++)
+                {
+                    for (int j = 0; j < 10; j++)
+                    {
+                        if (i == j) continue;
+
+                        for (int k = 0; k < 10; k++)
+                        {
+                            if (i == k || j == k) continue;
+
+                            for (int l = 0; l < 10; l++)
+                            {
+                                if (i == l || k == l || j == l) continue;
+
+                                var answer = $"{i}{j}{k}{l}";
+                                if (IsMarch(answer)) return answer;
+                            }
+                        }
+                    }
+                }
+                return "没找到匹配";
+            }
         }
     }
 }
